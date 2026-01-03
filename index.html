@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحسين صياغة خطة العمل من إكسل</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            direction: rtl;
+            background-color: #f3f6f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        input[type="file"] {
+            display: block;
+            margin: 20px auto;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button:disabled {
+            background-color: #9e9e9e;
+        }
+
+        #tablePreview {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #fff;
+            padding: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        table th {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>تحميل وتحسين خطة العمل</h2>
+    <input type="file" id="xlsxFile" accept=".xlsx,.xls">
+    <button id="processBtn" disabled>تحسين وتصدير</button>
+    <div id="tablePreview">
+        <p style="text-align: center;">معاينة البيانات ستظهر هنا</p>
+    </div>
+</div>
+
+<script>
+// تحسين النصوص باستخدام منهجية تُختصر لنص أقصر مع الحفاظ على المعنى
+function optimizeDescription(description) {
+    if (!description) return "";
+
+    const maxLength = 160;
+    let optimized = description.trim();
+
+    if (optimized.length <= maxLength) return optimized;
+
+    // تقليل جمل غير ضرورية
+    optimized = optimized.replace(/(يرجى العلم|ينبغي|من المقترح|على سبيل المثال|بناءً على ذلك)/g, "");
+
+    // تقصير النص مع محاولة الحفاظ على الفكرة
+    const words = optimized.split(/\s+/);
+    let shortened = "";
+    for (let word of words) {
+        if ((shortened + " " + word).length > maxLength) break;
+        shortened += " " + word;
+    }
+    return shortened.trim();
+}
+
+const fileInput = document.getElementById("xlsxFile");
+const processBtn = document.getElementById("processBtn");
+const tablePreview = document.getElementById("tablePreview");
+
+let excelData = [];
+
+fileInput.addEventListener("change", handleFileSelection);
+processBtn.addEventListener("click", processAndExport);
+
+function handleFileSelection(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        const workbook = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        excelData = XLSX.utils.sheet_to_json(firstSheet);
+
+        if (!excelData.length || !("idActions" in excelData[0]) || !("Description" in excelData[0])) {
+            alert("الملف يجب أن يحتوي عمودين: idActions و Description.");
+            processBtn.disabled = true;
+        } else {
+            displayTablePreview(excelData);
+            processBtn.disabled = false;
+        }
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+function displayTablePreview(data) {
+    let output = `
+        <table>
+            <thead>
+                <tr>
+                    <th>idActions</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    data.slice(0, 10).forEach(row => {
+        output += `
+            <tr>
+                <td>${row.idActions}</td>
+                <td>${row.Description}</td>
+            </tr>
+        `;
+    });
+
+    output += `
+            </tbody>
+        </table>
+        <p style="text-align: center; font-size: 12px; color: #666;">تم عرض أول 10 صفوف فقط...</p>
+    `;
+
+    tablePreview.innerHTML = output;
+}
+
+function processAndExport() {
+    const processedData = excelData.map(row => ({
+        ...row,
+        NewDescription: optimizeDescription(row.Description)
+    }));
+
+    const newSheet = XLSX.utils.json_to_sheet(processedData);
+    const newWorkbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(newWorkbook, newSheet, "OptimizedData");
+    XLSX.writeFile(newWorkbook, "ProcessedActionPlan.xlsx");
+}
+</script>
+</body>
+</html>
