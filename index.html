@@ -129,13 +129,19 @@ function handleFileSelection(event) {
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         excelData = XLSX.utils.sheet_to_json(firstSheet);
 
+        // تحقق من الأعمدة في أول سطر
         if (!excelData.length || !("idActions" in excelData[0]) || !("Description" in excelData[0])) {
-            alert("الملف يجب أن يحتوي عمودين: idActions و Description.");
+            alert("الملف يجب أن يحتوي على العمودين التاليين: idActions و Description.");
             processBtn.disabled = true;
-        } else {
-            displayTablePreview(excelData);
-            processBtn.disabled = false;
+            return;
         }
+
+        // عرض بيانات أولية في وحدة التحكم
+        console.log("البيانات المقروءة من الملف:", excelData);
+
+        // عرض الجدول
+        displayTablePreview(excelData);
+        processBtn.disabled = false;
     };
 
     reader.readAsArrayBuffer(file);
